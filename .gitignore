@@ -1,0 +1,16 @@
+# Simulation output
+*.vcd
+*.vvp
+*.fst
+*.out
+
+# Build directory
+build/
+
+# Log files
+*.log
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
