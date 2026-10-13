@@ -11,6 +11,7 @@ module alu_testbench;
     wire [7:0] result;
     wire carry;
     wire zero;
+    wire overflow;
 
     // Verification Counters
 
@@ -25,7 +26,8 @@ module alu_testbench;
         .opcode(opcode),
         .result(result),
         .carry(carry),
-        .zero(zero)
+        .zero(zero),
+        .overflow(overflow)
     );
 
     // Reference model
@@ -38,28 +40,52 @@ module alu_testbench;
         output [7:0] expected_result;
         output expected_carry;
         output expected_zero;
+        output expected_overflow;
 
         reg[8:0] expected_temp;
+        reg signed [8:0] signed_result;
+        
 
         begin
-
+            
             expected_result = 8'h00;
             expected_carry = 1'b0;
             expected_temp = 9'h000;
 
+            // additional declaration to store a signed result
+            expected_overflow = 1'b0;
+            signed_result = 9'sd0;
+
             case(test_opcode)
 
-                3'b000: begin 
+                3'b000: begin // Calculates Expected Behavior for ADDITION
                     expected_temp =
                     {1'b0, test_a} + {1'b0, test_b};
 
+                    signed_result = $signed(test_a) + $signed(test_b);
+
                     expected_result = expected_temp[7:0];
                     expected_carry = expected_temp[8];
+
+                    // Behavioral verification of overflow for signed arithmetic
+                    // Overflow discernment differs from DUT for extra check
+
+                    if (signed_result > 127 || signed_result < -128)
+                        expected_overflow = 1'b1; 
+                    else 
+                        expected_overflow = 1'b0;
                 end
 
-                3'b001: begin
+                3'b001: begin // Calculates Expected Behavior for SUBTRACTION
                     expected_result = test_a - test_b;
                     expected_carry = (test_a < test_b);
+                    
+                    signed_result = $signed(test_a) - $signed(test_b);
+                    
+                    if (signed_result > 127 || signed_result < -128)
+                        expected_overflow = 1'b1;
+                    else 
+                        expected_overflow = 1'b0;
                 end
 
                 3'b010:
@@ -99,6 +125,7 @@ module alu_testbench;
         reg [7:0] expected_result;
         reg expected_carry;
         reg expected_zero;
+        reg expected_overflow;
 
         begin
 
@@ -108,7 +135,8 @@ module alu_testbench;
                 test_opcode,
                 expected_result,
                 expected_carry,
-                expected_zero
+                expected_zero,
+                expected_overflow
             );
 
             a = test_a;
@@ -121,13 +149,14 @@ module alu_testbench;
 
             if (result !== expected_result ||
             carry !== expected_carry ||
-            zero !== expected_zero
+            zero !== expected_zero ||
+            overflow !== expected_overflow
             ) begin
 
             errors = errors + 1;
 
             $display(
-                "FAIL #%0d: op=%b a=%h b=%h | actual=%h/%b/%b expected=&h/%b/%b",
+                "FAIL #%0d: op=%b a=%h b=%h | actual: result=%h carry=%b zero=%b overflow=%b | expected: result=%h carry=%b zero=%b overflow=%b",
                 tests,
                 opcode,
                 a,
@@ -137,9 +166,17 @@ module alu_testbench;
                 zero,
                 expected_result,
                 expected_carry,
-                expected_zero 
+                expected_zero,
+                expected_overflow 
+
             );
 
+            end
+            else begin
+                $display(
+                    "PASS #%0d: op=%b a=%h b=%h", 
+                    tests, opcode, a, b
+                );
             end
         end
     endtask
@@ -156,18 +193,38 @@ module alu_testbench;
         errors = 0;
 
         #1;
-
+        // check cases of basic functionality for addition that can easily be verified
         check_case(8'd10, 8'd20, 3'b000);
-        check_case(8'hFF, 8'h01, 3'b000);
-
+        check_case(8'd255, 8'd1, 3'b000);
+        // check cases of basic functionality for subtraction that can easily be verified
         check_case(8'd20, 8'd10, 3'b001);
         check_case(8'd3, 8'd5, 3'b001);
 
+        // Basic check for ANDer functionality
         check_case(
             8'b10101010,
             8'b11110000,
             3'b010
         );
+
+        // check overflow and carry flag logic
+
+        // Addition: signed overflow without carry
+        check_case(8'd127, 8'd1, 3'b000);
+
+        // Addition: carry without signed overflow
+        check_case(8'd255, 8'd1, 3'b000);
+
+        // Addition: signed overflow with carry
+        check_case(8'd128, 8'd128, 3'b000);
+
+        // Subtraction: negative signed overflow
+        check_case(8'd128, 8'd1, 3'b001);
+
+        // Subtraction: borrow without signed overflow
+        check_case(8'd3, 8'd5, 3'b001);
+
+        
 
         $display("");
         $display("-----------------------------");

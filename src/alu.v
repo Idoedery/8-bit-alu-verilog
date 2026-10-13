@@ -6,7 +6,9 @@ module alu_8bit (
     input wire [2:0] opcode,
     output reg [7:0] result,
     output reg carry,
-    output reg zero);
+    output reg zero,
+    output reg overflow
+    );
     reg [8:0] temp;
 
     // Operation Codes
@@ -24,21 +26,25 @@ module alu_8bit (
         carry = 1'b0;
         result = 8'b0;
         temp = 9'b0;
+        overflow = 1'b0;
 
         case(opcode)
             OP_ADD: begin 
                 temp = {1'b0,a} + {1'b0,b};
                 result = temp[7:0];
                 carry = temp[8]; 
+                overflow = (a[7] ~^ b[7]) & (a[7] ^ result[7]);
             end
 
             OP_SUB: begin 
                 temp = {1'b0,a} - {1'b0,b};
                 result = temp[7:0];
                 carry = temp[8];
+                overflow = (a[7] ^ b[7]) & (a[7] ^ result[7]);
             end
             OP_AND: begin
                 result = a & b; 
+                
             end
 
             OP_OR: begin
@@ -67,6 +73,7 @@ module alu_8bit (
         end
         endcase
         zero = (result == 8'b0);
+        
     end
 endmodule
 
