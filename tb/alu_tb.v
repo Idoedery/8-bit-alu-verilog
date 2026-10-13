@@ -18,6 +18,11 @@ module alu_testbench;
     integer tests;
     integer errors;
 
+    // used for exhaustive verfication of all cases (2^8 * 2^8 * 2*3)
+    integer op_idx;
+    integer a_idx;
+    integer b_idx;
+
     // DUT
   
     alu_8bit dut (
@@ -127,6 +132,8 @@ module alu_testbench;
         reg expected_zero;
         reg expected_overflow;
 
+        
+
         begin
 
             calculate_expected(
@@ -172,12 +179,12 @@ module alu_testbench;
             );
 
             end
-            else begin
-                $display(
-                    "PASS #%0d: op=%b a=%h b=%h", 
-                    tests, opcode, a, b
-                );
-            end
+            // else begin
+            //     $display(
+            //         "PASS #%0d: op=%b a=%h b=%h", 
+            //         tests, opcode, a, b
+            //     );
+            // end
         end
     endtask
 
@@ -224,7 +231,18 @@ module alu_testbench;
         // Subtraction: borrow without signed overflow
         check_case(8'd3, 8'd5, 3'b001);
 
-        
+        #1
+
+        // exhaustive means of testing all combinations
+
+        for (op_idx = 0; op_idx < 8; op_idx = op_idx + 1) begin
+            for (a_idx = 0; a_idx < 256; a_idx = a_idx + 1) begin
+                for (b_idx = 0; b_idx < 256; b_idx = b_idx + 1) begin
+                    check_case(a_idx, b_idx, op_idx);
+                end
+            end
+        end
+                
 
         $display("");
         $display("-----------------------------");
